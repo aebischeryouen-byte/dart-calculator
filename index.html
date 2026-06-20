@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Dart Rechner</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none; }
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+  header { background: #1a1a1a; padding: 16px 20px; display: flex; align-items: center;
+    justify-content: space-between; padding-top: max(16px, env(safe-area-inset-top)); }
+  header h1 { font-size: 22px; font-weight: 600; margin: 0; flex: 1; text-align: center; }
+  header .icon-btn { background: none; border: none; color: #4ade80; font-size: 24px;
+    cursor: pointer; padding: 4px 8px; min-width: 40px; }
+  header .left { min-width: 40px; }
+
+  main { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+
+  nav.bottom { background: #1a1a1a; display: flex; justify-content: space-around;
+    padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid #2a2a2a; }
+  nav.bottom button { background: none; border: none; color: #888; padding: 4px 8px;
+    font-size: 11px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 4px; flex: 1; }
+  nav.bottom button.active { color: #4ade80; }
+  nav.bottom button svg { width: 22px; height: 22px; }
+
+  /* Buttons */
+  .btn { padding: 12px 16px; border: none; border-radius: 6px; font-size: 16px;
+    cursor: pointer; font-weight: 600; }
+  .btn-green { background: #4ade80; color: #000; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-gray { background: #444; color: #fff; }
+  .btn-outline-green { background: transparent; border: 1px solid #4ade80; color: #4ade80; }
+
+  /* Home */
+  .toggle-row { display: flex; border: 1px solid #4ade80; border-radius: 8px;
+    overflow: hidden; max-width: 280px; margin: 0 auto 20px; }
+  .toggle-row button { flex: 1; padding: 10px; background: transparent;
+    border: none; color: #4ade80; font-size: 16px; cursor: pointer; }
+  .toggle-row button.active { background: #4ade80; color: #000; }
+
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    max-width: 480px; margin: 0 auto 20px; }
+  .config-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .config-cell .label { color: #888; font-size: 13px; }
+  .config-cell .value { padding: 14px 8px; border-radius: 6px; width: 100%;
+    text-align: center; font-weight: 700; font-size: 17px; cursor: pointer;
+    border: none; color: #fff; }
+  .config-cell .value.green { background: #16a34a; }
+  .config-cell .value.red { background: #dc2626; }
+
+  .start-btn { display: block; margin: 20px auto; width: 80%; max-width: 320px;
+    padding: 18px; font-size: 20px; background: #dc2626; color: #fff;
+    border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .start-btn:disabled { opacity: 0.4; }
+
+  .action-row { display: flex; gap: 10px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer;
+    color: #fff; font-size: 15px; }
+  .checkbox-label input { display: none; }
+  .checkbox-label .box { width: 22px; height: 22px; border: 2px solid #4ade80;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+  .checkbox-label input:checked + .box::after { content: "✓"; color: #4ade80;
+    font-weight: bold; font-size: 16px; }
+  .action-btn { background: #16a34a; color: #fff; border: none; padding: 12px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 15px; display: flex;
+    align-items: center; gap: 6px; flex: 1; justify-content: center;
+    min-height: 48px; max-height: 48px; }
+  .action-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+  .checkout-bar { display: flex; gap: 6px; justify-content: center; padding: 10px 8px 4px;
+    background: #1a1a1a; }
+  .checkout-bar .co-dart { background: #000; color: #fff; padding: 8px 16px;
+    border-radius: 4px; font-weight: 700; font-size: 17px; min-width: 60px;
+    text-align: center; }
+  .checkout-bar .co-empty { color: #555; padding: 10px 0; font-size: 14px; }
+
+  /* Players list */
+  .player-row { display: flex; align-items: center; padding: 14px 8px;
+    border-bottom: 1px solid #1a1a1a; gap: 12px; }
+  .player-row .dart-icon { width: 26px; height: 26px; flex-shrink: 0; }
+  .player-row .name { flex: 1; font-size: 17px; font-weight: 600; }
+  .player-row .name.active { color: #4ade80; }
+  .player-row .name.bot { color: #4ade80; }
+  .player-row .trash { background: none; border: none; color: #777;
+    cursor: pointer; padding: 8px; font-size: 20px; }
+  .player-row .drag { color: #777; padding: 8px; font-size: 22px; cursor: grab; }
+  .player-row.dragging { opacity: 0.4; }
+
+  /* Game history */
+  .game-card { background: #2a2a2a; border-radius: 8px; padding: 14px;
+    margin-bottom: 12px; }
+  .game-card .head { display: flex; justify-content: space-between;
+    align-items: flex-start; margin-bottom: 4px; }
+  .game-card .date { font-size: 18px; font-weight: 700; }
+  .game-card .status { color: #4ade80; font-weight: 700; font-size: 15px; }
+  .game-card .gtype { color: #999; font-size: 14px; margin-bottom: 12px; }
+  .game-card .pline { display: flex; justify-content: space-between;
+    padding: 10px 0; border-top: 1px solid #1a1a1a; }
+  .game-card .pline .pname { font-size: 16px; }
+  .game-card .pline .pname .num { color: #777; margin-right: 6px; }
+  .game-card .pline .pstats { text-align: right; color: #888; font-size: 13px; }
+  .game-card .pline .pscore { font-size: 18px; font-weight: 700; color: #fff; }
+  .game-card .pline.winner .pscore { color: #4ade80; }
+
+  /* Game view */
+  .game-info { color: #999; font-size: 15px; margin: 8px 0 16px; }
+  .player-panel { background: #2a2a2a; border-radius: 6px; margin-bottom: 8px;
+    padding: 14px; position: relative; overflow: hidden; display: grid;
+    grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+  .player-panel.active::before { content: ""; position: absolute; left: 0; top: 0;
+    bottom: 0; width: 6px; background: #4ade80; }
+  .player-panel .score { font-size: 42px; font-weight: 700; }
+  .player-panel .pname-block { display: flex; flex-direction: column; gap: 4px; }
+  .player-panel .pname-block .nm { color: #888; font-size: 15px; }
+  .player-panel .darts { display: flex; gap: 6px; }
+  .player-panel .dart-box { width: 44px; height: 44px; background: #000;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; }
+  .player-panel .stats { text-align: right; font-size: 13px; color: #888; }
+  .player-panel .stats b { color: #fff; }
+  .player-panel .turn-total { font-size: 18px; font-weight: 700; color: #fff;
+    text-align: center; }
+
+  .keypad { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    padding: 8px; background: #1a1a1a; }
+  .keypad button { background: #555; border: none; color: #fff; padding: 16px 0;
+    font-size: 18px; font-weight: 600; border-radius: 4px; cursor: pointer; }
+  .keypad button:active { background: #777; }
+  .keypad button.double { background: #f59e0b; grid-column: span 2; }
+  .keypad button.double.active { background: #d97706; outline: 2px solid #fff; }
+  .keypad button.triple { background: #ea580c; grid-column: span 2; }
+  .keypad button.triple.active { background: #c2410c; outline: 2px solid #fff; }
+  .keypad button.undo { background: #ef4444; }
+  .keypad button.disabled { opacity: 0.3; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal { background: #1a1a1a; border-radius: 12px; padding: 24px; max-width: 360px;
+    width: 100%; }
+  .modal h2 { margin: 0 0 16px; font-size: 20px; }
+  .modal input { width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #444;
+    border-radius: 6px; color: #fff; font-size: 16px; margin-bottom: 16px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .stats-card { background: #2a2a2a; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+  .stats-card h3 { margin: 0 0 12px; color: #4ade80; }
+  .stats-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+  .stats-row .lbl { color: #999; }
+  .empty { text-align: center; color: #666; padding: 40px 20px; }
+
+  .settings-row { background: #2a2a2a; padding: 16px; border-radius: 8px; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; }
+  .settings-row .lbl { font-size: 16px; }
+  .settings-row .val { color: #4ade80; font-size: 15px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ============================================================================
+//  STATE & PERSISTENCE
+// ============================================================================
+const STORAGE_KEY = 'dartrechner_v1';
+const defaultState = {
+  players: [],
+  games: [],
+  activePlayerId: null,
+  config: {
+    mode: 'X01',
+    punkte: 201,
+    checkout: 'Straight Out',
+    checkin: 'Straight In',
+    saetze: 1,
+    legs: 1,
+    matchType: 'First to',
+    randomOrder: true,
+    selectedPlayerIds: [],
+  },
+  view: 'home',
+  game: null,
+  botCounter: 0,
+};
+
+let state = load();
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(defaultState));
+    const parsed = JSON.parse(raw);
+    return { ...JSON.parse(JSON.stringify(defaultState)), ...parsed,
+             config: { ...defaultState.config, ...(parsed.config||{}) } };
+  } catch { return JSON.parse(JSON.stringify(defaultState)); }
+}
+function save() {
+  const persist = {
+    players: state.players,
+    games: state.games,
+    activePlayerId: state.activePlayerId,
+    config: state.config,
+    botCounter: state.botCounter,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ============================================================================
+//  ICONS
+// ============================================================================
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3z"/></svg>',
+  players: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+  stats: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>',
+  history: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8z"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>',
+  dart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 2l-9 9-1.5-1.5L20.5 0.5 22 2zM2 22l7-2 4-4-5-5-4 4-2 7z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>',
+  arrow_back: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>',
+  volume_on: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>',
+  volume_off: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.17v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
+  drag: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 8h18v2H3V8zm0 6h18v2H3v-2z"/></svg>',
+  bot: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z"/></svg>',
+};
+
+// ============================================================================
+//  ROUTER / RENDER
+// ============================================================================
+function render() {
+  const app = document.getElementById('app');
+  let content;
+  if (state.game) content = renderGame();
+  else if (state.view === 'home') content = renderHome();
+  else if (state.view === 'players') content = renderPlayers();
+  else if (state.view === 'stats') content = renderStats();
+  else if (state.view === 'allgames') content = renderAllGames();
+  else if (state.view === 'settings') content = renderSettings();
+
+  app.innerHTML = content;
+  attachHandlers();
+}
+
+function renderBottomNav(active) {
+  if (state.game) return '';
+  const tabs = [
+    ['home','Start',ICONS.home],
+    ['players','Spieler',ICONS.players],
+    ['stats','Statistiken',ICONS.stats],
+    ['allgames','Alle Spiele',ICONS.history],
+    ['settings','Einstellungen',ICONS.settings],
+  ];
+  return `<nav class="bottom">${tabs.map(([id,lbl,ic])=>
+    `<button data-nav="${id}" class="${active===id?'active':''}">${ic}<span>${lbl}</span></button>`
+  ).join('')}</nav>`;
+}
+
+// ============================================================================
+//  HOME / START
+// ============================================================================
+function renderHome() {
+  const c = state.config;
+  const selected = c.selectedPlayerIds.map(id => state.players.find(p=>p.id===id)).filter(Boolean);
+  const canStart = selected.length >= 1;
+
+  return `
+    <header>
+      <div class="left"></div>
+      <h1>Dart Rechner</h1>
+      <button class="icon-btn">${ICONS.share}</button>
+    </header>
+    <main>
+      <div class="config-grid">
+        <div class="config-cell">
+          <span class="label">Punkte</span>
+          <button class="value green" data-cfg="punkte">${c.punkte}</button>
+        </div>
+        <div class="config-cell">
+          <span class="label">Check-Out</span>
+          <button class="value red" data-cfg="checkout">${c.checkout}</button>
+        </div>
+        <div class="config-cell">
+          <span class="label">Sätzen</span>
+          <button class="value green" data-cfg="saetze">${c.saetze}</button>
+        </div>
+        <div class="config-cell">
+          <span class="label">Satz/Leg</span>
+          <button class="value green" data-cfg="matchType">${c.matchType}</button>
+        </div>
+        <div class="config-cell">
+          <span class="label">Check-In</span>
+          <button class="value red" data-cfg="checkin">${c.checkin}</button>
+        </div>
+        <div class="config-cell">
+          <span class="label">Legs</span>
+          <button class="value green" data-cfg="legs">${c.legs}</button>
+        </div>
+      </div>
+
+      <button class="start-btn" id="startBtn" ${!canStart?'disabled':''}>START</button>
+
+      <div class="action-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="randomOrder" ${c.randomOrder?'checked':''}>
+          <span class="box"></span>
+          <span>Zufällige Reihenfolge</span>
+        </label>
+        <button class="action-btn" id="addBot">${ICONS.bot}<span style="font-size:18px">+</span></button>
+        <button class="action-btn" id="addPlayerHome">${ICONS.plus} Hinzufügen</button>
+      </div>
+
+      <div style="color:#888;margin-top:16px;">Spieler</div>
+      <div id="selectedPlayers">
+        ${selected.length===0 ? '<div class="empty">Keine Spieler ausgewählt</div>' :
+          selected.map((p,i)=>`
+            <div class="player-row" data-pid="${p.id}" draggable="true">
+              <span class="dart-icon" style="color:${i===0?'#4ade80':'#888'}">${ICONS.dart}</span>
+              <span class="name ${p.isBot?'bot':''}">${escapeHtml(p.name)}</span>
+              <button class="trash" data-removeSel="${p.id}">${ICONS.trash}</button>
+              <span class="drag">${ICONS.drag}</span>
+            </div>
+          `).join('')}
+      </div>
+    </main>
+    ${renderBottomNav('home')}
+  `;
+}
+
+// ============================================================================
+//  PLAYERS
+// ============================================================================
+function renderPlayers() {
+  return `
+    <header>
+      <div class="left"></div>
+      <h1>Spieler</h1>
+      <button class="icon-btn" id="addPlayerBtn">${ICONS.plus}</button>
+    </header>
+    <main>
+      ${state.players.length===0 ? '<div class="empty">Noch keine Spieler. Tippe + zum Hinzufügen.</div>' :
+        state.players.map(p => `
+          <div class="player-row" data-pid="${p.id}" draggable="true">
+            <span class="dart-icon" style="color:${state.activePlayerId===p.id?'#4ade80':'#888'}"
+                  data-setactive="${p.id}">${ICONS.dart}</span>
+            <span class="name ${state.activePlayerId===p.id?'active':''} ${p.isBot?'bot':''}">${escapeHtml(p.name)}</span>
+            <button class="trash" data-removePlayer="${p.id}">${ICONS.trash}</button>
+            <span class="drag">${ICONS.drag}</span>
+          </div>
+        `).join('')}
+    </main>
+    ${renderBottomNav('players')}
+  `;
+}
+
+// ============================================================================
+//  STATS
+// ============================================================================
+function renderStats() {
+  const stats = computeStats();
+  return `
+    <header><div class="left"></div><h1>Statistiken</h1><div style="min-width:40px"></div></header>
+    <main>
+      <div class="stats-card">
+        <h3>Gesamt</h3>
+        <div class="stats-row"><span class="lbl">Spiele gespielt</span><b>${stats.totalGames}</b></div>
+      </div>
+      ${stats.perPlayer.length===0 ? '<div class="empty">Noch keine Spiele.</div>' :
+        stats.perPlayer.map(s => `
+          <div class="stats-card">
+            <h3>${escapeHtml(s.name)}</h3>
+            <div class="stats-row"><span class="lbl">Spiele</span><b>${s.games}</b></div>
+            <div class="stats-row"><span class="lbl">Siege</span><b>${s.wins}</b></div>
+            <div class="stats-row"><span class="lbl">Sieg-Quote</span><b>${s.games?Math.round(s.wins/s.games*100):0}%</b></div>
+            <div class="stats-row"><span class="lbl">Ø Score (X01)</span><b>${s.avg.toFixed(2)}</b></div>
+            <div class="stats-row"><span class="lbl">Höchste Aufnahme</span><b>${s.highest}</b></div>
+          </div>
+        `).join('')}
+    </main>
+    ${renderBottomNav('stats')}
+  `;
+}
+
+function computeStats() {
+  const totalGames = state.games.length;
+  const x01Games = state.games.filter(g=>g.mode==='X01').length;
+  const cricketGames = state.games.filter(g=>g.mode==='Cricket').length;
+  const perPlayer = state.players.map(p => {
+    let games=0, wins=0, totalScore=0, scoreCount=0, highest=0;
+    state.games.forEach(g => {
+      const pl = g.players.find(x=>x.id===p.id);
+      if (!pl) return;
+      games++;
+      if (g.winner === p.id) wins++;
+      if (g.mode==='X01' && pl.turns) {
+        pl.turns.forEach(t => {
+          if (t > 0) { totalScore += t; scoreCount++; }
+          if (t > highest) highest = t;
+        });
+      }
+    });
+    return { name: p.name, games, wins,
+             avg: scoreCount?totalScore/scoreCount:0, highest };
+  }).filter(s=>s.games>0);
+  return { totalGames, x01Games, cricketGames, perPlayer };
+}
+
+// ============================================================================
+//  ALL GAMES
+// ============================================================================
+function renderAllGames() {
+  const filter = state.gamesFilter || 'Alle Spiele';
+  const games = [...state.games].sort((a,b)=>b.date-a.date).filter(g =>
+    filter==='Alle Spiele' || g.mode===filter);
+  return `
+    <header>
+      <div class="left"></div>
+      <h1>Alle Spiele</h1>
+      <button class="icon-btn" id="clearGames">${ICONS.trash}</button>
+    </header>
+    <main>
+      ${games.length===0 ? '<div class="empty">Noch keine Spiele gespeichert.</div>' :
+        games.map(g => `
+          <div class="game-card">
+            <div class="head">
+              <div class="date">${fmtDate(g.date)}</div>
+              <div class="status">BEENDET</div>
+            </div>
+            <div class="gtype">${g.mode} (${g.config.punkte||''}, ${g.config.checkout||''}, ${g.config.matchType||''} ${g.config.saetze||1} Satz ${g.config.legs||1} Leg)</div>
+            ${g.players.map((p,i)=>`
+              <div class="pline ${g.winner===p.id?'winner':''}">
+                <div class="pname"><span class="num">${i+1}.</span><b>${escapeHtml(p.name)}</b></div>
+                <div class="pstats">
+                  Sätzen: <b style="color:#fff">${p.sets||0}</b> Legs: <b style="color:#fff">${p.legs||0}</b><br>
+                  <span class="pscore">${p.finalScore!=null?p.finalScore:(g.config.punkte||0)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+    </main>
+    ${renderBottomNav('allgames')}
+  `;
+}
+
+// ============================================================================
+//  SETTINGS
+// ============================================================================
+function renderSettings() {
+  return `
+    <header><div class="left"></div><h1>Einstellungen</h1><div style="min-width:40px"></div></header>
+    <main>
+      <div class="settings-row">
+        <div>
+          <div class="lbl">Daten exportieren</div>
+          <div style="color:#888;font-size:13px;">Als JSON-Datei speichern</div>
+        </div>
+        <button class="btn btn-outline-green" id="exportData">Export</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="lbl">Daten importieren</div>
+          <div style="color:#888;font-size:13px;">Aus JSON-Datei laden</div>
+        </div>
+        <button class="btn btn-outline-green" id="importData">Import</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="lbl">Alle Daten löschen</div>
+          <div style="color:#888;font-size:13px;">Spieler, Spiele, Einstellungen</div>
+        </div>
+        <button class="btn btn-red" id="resetAll">Reset</button>
+      </div>
+      <div style="text-align:center;color:#666;margin-top:30px;font-size:13px;">
+        Dart Rechner · v1.0<br>Lokale Speicherung auf diesem Gerät
+      </div>
+    </main>
+    ${renderBottomNav('settings')}
+  `;
+}
+
+// ============================================================================
+//  GAME VIEW (X01)
+// ============================================================================
+function renderGame() {
+  const g = state.game;
+  const cur = g.players[g.currentPlayerIdx];
+  return `
+    <header>
+      <button class="icon-btn left" id="backGame">${ICONS.arrow_back}</button>
+      <h1>X01</h1>
+      <div style="min-width:40px"></div>
+    </header>
+    <div style="padding:0 20px 12px;color:#999;font-size:15px;">
+      ${g.config.punkte}, ${g.config.checkout}, ${g.config.matchType} ${g.config.saetze} Satz ${g.config.legs} Leg
+    </div>
+    <main style="padding:0 8px;">
+      ${g.players.map((p, idx) => `
+        <div class="player-panel ${idx===g.currentPlayerIdx?'active':''}">
+          <div class="score">${idx===g.currentPlayerIdx ? (p.score - sumDarts(g.currentDarts)) : p.score}</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="color:#888;font-size:15px;">${escapeHtml(p.name)}</div>
+            <div class="darts">
+              ${[0,1,2].map(i => `
+                <div class="dart-box">${idx===g.currentPlayerIdx && g.currentDarts[i] ? g.currentDarts[i].label : ''}</div>
+              `).join('')}
+            </div>
+            <div class="turn-total">${idx===g.currentPlayerIdx ? sumDarts(g.currentDarts) : (p.lastTurn||0)}</div>
+          </div>
+          <div class="stats">
+            Sätzen: <b>${p.sets}</b> Legs: <b>${p.legs}</b><br>
+            <span style="display:inline-block;margin:4px 0;">🎯 ${p.dartCount}</span><br>
+            Ø <b>${p.avg.toFixed(2)}</b>
+          </div>
+        </div>
+      `).join('')}
+    </main>
+    ${renderKeypad()}
+  `;
+}
+
+function renderKeypad() {
+  const g = state.game;
+  const disabled = g.currentDarts.filter(Boolean).length >= 3;
+  const mult = g.multiplier;
+  const nums = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,25];
+  const cur = g.players[g.currentPlayerIdx];
+  const remaining = cur.score - sumDarts(g.currentDarts);
+  const dartsLeft = 3 - g.currentDarts.filter(Boolean).length;
+  const suggestion = checkoutSuggestion(remaining, dartsLeft, g.config.checkout);
+  const coBar = suggestion.length
+    ? `<div class="checkout-bar">${suggestion.map(s=>`<div class="co-dart">${s}</div>`).join('')}</div>`
+    : `<div class="checkout-bar"><div class="co-empty">${remaining>170?'':'kein Finish möglich'}</div></div>`;
+  return `
+    ${coBar}
+    <div class="keypad">
+      ${nums.map(n => `<button data-num="${n}" ${disabled?'class="disabled" disabled':''}>${n}</button>`).join('')}
+      <button data-num="0" ${disabled?'class="disabled" disabled':''}>0</button>
+      <button class="double ${mult===2?'active':''}" data-mult="2">DOUBLE</button>
+      <button class="triple ${mult===3?'active':''}" data-mult="3">TRIPLE</button>
+      <button class="undo" id="undoDart">${ICONS.arrow_back}</button>
+    </div>
+  `;
+}
+
+function sumDarts(darts) {
+  return darts.filter(Boolean).reduce((s,d)=>s+d.value,0);
+}
+
+// Checkout suggestions (Double Out finishes)
+const CHECKOUTS_DO = {
+  170:['T20','T20','Bull'],167:['T20','T19','Bull'],164:['T20','T18','Bull'],
+  161:['T20','T17','Bull'],160:['T20','T20','D20'],158:['T20','T20','D19'],
+  157:['T20','T19','D20'],156:['T20','T20','D18'],155:['T20','T19','D19'],
+  154:['T20','T18','D20'],153:['T20','T19','D18'],152:['T20','T20','D16'],
+  151:['T20','T17','D20'],150:['T20','T18','D18'],149:['T20','T19','D16'],
+  148:['T20','T16','D20'],147:['T20','T17','D18'],146:['T20','T18','D16'],
+  145:['T20','T15','D20'],144:['T20','T20','D12'],143:['T20','T17','D16'],
+  142:['T20','T14','D20'],141:['T20','T19','D12'],140:['T20','T20','D10'],
+  139:['T19','T14','D20'],138:['T20','T18','D12'],137:['T20','T19','D10'],
+  136:['T20','T20','D8'],135:['T20','T17','D12'],134:['T20','T14','D16'],
+  133:['T20','T19','D8'],132:['T20','T16','D12'],131:['T20','T13','D16'],
+  130:['T20','T18','D8'],129:['T19','T20','D6'],128:['T18','T14','D16'],
+  127:['T20','T17','D8'],126:['T19','T19','D6'],125:['T20','T19','D4'],
+  124:['T20','T16','D8'],123:['T19','T16','D9'],122:['T18','T18','D7'],
+  121:['T20','T11','D14'],120:['T20','20','D20'],119:['T19','T12','D13'],
+  118:['T20','18','D20'],117:['T20','17','D20'],116:['T19','19','D20'],
+  115:['T20','15','D20'],114:['T20','14','D20'],113:['T19','16','D20'],
+  112:['T20','12','D20'],111:['T19','14','D20'],110:['T20','10','D20'],
+  109:['T19','12','D20'],108:['T20','16','D16'],107:['T19','10','D20'],
+  106:['T20','6','D20'],105:['T20','13','D16'],104:['T18','18','D16'],
+  103:['T19','6','D20'],102:['T20','10','D16'],101:['T17','10','D20'],
+  100:['T20','D20'],99:['T19','10','D16'],98:['T20','D19'],97:['T19','D20'],
+  96:['T20','D18'],95:['T19','D19'],94:['T18','D20'],93:['T19','D18'],
+  92:['T20','D16'],91:['T17','D20'],90:['T18','D18'],89:['T19','D16'],
+  88:['T20','D14'],87:['T17','D18'],86:['T18','D16'],85:['T15','D20'],
+  84:['T20','D12'],83:['T17','D16'],82:['T14','D20'],81:['T19','D12'],
+  80:['T20','D10'],79:['T19','D11'],78:['T18','D12'],77:['T19','D10'],
+  76:['T20','D8'],75:['T17','D12'],74:['T14','D16'],73:['T19','D8'],
+  72:['T16','D12'],71:['T13','D16'],70:['T18','D8'],69:['T19','D6'],
+  68:['T20','D4'],67:['T17','D8'],66:['T10','D18'],65:['T19','D4'],
+  64:['T16','D8'],63:['T13','D12'],62:['T10','D16'],61:['T15','D8'],
+  60:['20','D20'],59:['19','D20'],58:['18','D20'],57:['17','D20'],
+  56:['16','D20'],55:['15','D20'],54:['14','D20'],53:['13','D20'],
+  52:['12','D20'],51:['11','D20'],50:['Bull'],49:['9','D20'],
+  48:['16','D16'],47:['7','D20'],46:['6','D20'],45:['13','D16'],
+  44:['12','D16'],43:['3','D20'],42:['10','D16'],41:['9','D16'],
+  40:['D20'],39:['7','D16'],38:['D19'],37:['5','D16'],36:['D18'],
+  35:['3','D16'],34:['D17'],33:['1','D16'],32:['D16'],31:['15','D8'],
+  30:['D15'],29:['13','D8'],28:['D14'],27:['11','D8'],26:['D13'],
+  24:['D12'],22:['D11'],20:['D10'],18:['D9'],16:['D8'],14:['D7'],
+  12:['D6'],10:['D5'],8:['D4'],6:['D3'],4:['D2'],2:['D1'],
+};
+
+function checkoutSuggestion(score, dartsLeft, mode) {
+  if (mode === 'Double Out' || mode === 'Master Out' || mode === 'Straight Out') {
+    if (score <= 1 || score > 170) return [];
+    const co = CHECKOUTS_DO[score];
+    if (!co) return [];
+    if (co.length > dartsLeft) return [];
+    return co;
+  }
+  return [];
+}
+
+// ============================================================================
+//  GAME LOGIC
+// ============================================================================
+function startGame() {
+  const c = state.config;
+  let plIds = [...c.selectedPlayerIds];
+  if (c.randomOrder) plIds = shuffle(plIds);
+  const players = plIds.map(id => {
+    const base = state.players.find(p=>p.id===id) || {name:'?', id};
+    return {
+      id: base.id, name: base.name, isBot: base.isBot,
+      score: c.punkte, sets: 0, legs: 0,
+      dartCount: 0, totalScored: 0, avg: 0, lastTurn: 0,
+      turns: [],
+    };
+  });
+  state.game = {
+    config: { ...c },
+    players,
+    currentPlayerIdx: 0,
+    currentDarts: [null, null, null],
+    multiplier: 1,
+    muted: false,
+    startedAt: Date.now(),
+    legsToWin: c.legs,
+    setsToWin: c.saetze,
+    finished: false,
+  };
+  state.view = 'game';
+  save(); render();
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i=a.length-1;i>0;i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function pressNum(n) {
+  const g = state.game;
+  if (!g || g.finished) return;
+  const idx = g.currentDarts.findIndex(d=>d===null);
+  if (idx === -1) return;
+  const mult = (n===25 && g.multiplier===3) ? 2 : g.multiplier; // bull triple = bull (no triple bull)
+  const value = n * (n===0 ? 0 : mult);
+  let label;
+  if (n===0) label = '0';
+  else if (mult===1) label = String(n);
+  else if (mult===2) label = (n===25 ? 'DB' : 'D'+n);
+  else label = 'T'+n;
+  g.currentDarts[idx] = { value, label, n, mult };
+  g.multiplier = 1;
+
+  // Auto-submit after 3 darts OR if player would bust / win
+  const cur = g.players[g.currentPlayerIdx];
+  const turnSum = sumDarts(g.currentDarts);
+  const newScore = cur.score - turnSum;
+  const dartsThrown = g.currentDarts.filter(Boolean).length;
+
+  const lastDart = g.currentDarts[idx];
+  const lastIsDouble = lastDart.mult === 2 || (lastDart.n === 25 && lastDart.mult === 2);
+
+  // Check for instant win on this dart
+  if (newScore === 0) {
+    if (g.config.checkout === 'Straight Out' || lastIsDouble) {
+      // win
+      finishTurn(true, false);
+      return;
+    } else {
+      // bust (double out required but not double)
+      finishTurn(false, true);
+      return;
+    }
+  }
+  // Bust conditions
+  if (newScore < 0 || (g.config.checkout === 'Double Out' && newScore === 1)) {
+    finishTurn(false, true);
+    return;
+  }
+  if (dartsThrown === 3) {
+    finishTurn(false, false);
+  }
+  save(); render();
+}
+
+function finishTurn(won, bust) {
+  const g = state.game;
+  const cur = g.players[g.currentPlayerIdx];
+  const turnSum = bust ? 0 : sumDarts(g.currentDarts);
+  const dartsThrown = g.currentDarts.filter(Boolean).length;
+
+  cur.dartCount += dartsThrown;
+  if (!bust) {
+    cur.score -= turnSum;
+    cur.totalScored += turnSum;
+    cur.turns.push(turnSum);
+    cur.lastTurn = turnSum;
+  } else {
+    cur.turns.push(0);
+    cur.lastTurn = 0;
+  }
+  cur.avg = cur.dartCount ? (cur.totalScored / cur.dartCount * 3) : 0;
+
+  if (won) {
+    cur.legs += 1;
+    const legsToWinLeg = g.config.legs;
+    if (cur.legs >= legsToWinLeg) {
+      cur.sets += 1;
+      g.players.forEach(p => p.legs = 0);
+      if (cur.sets >= g.config.saetze) {
+        // game over
+        finishGame(cur.id);
+        return;
+      }
+    }
+    // reset for next leg
+    g.players.forEach(p => p.score = g.config.punkte);
+    g.currentPlayerIdx = (g.currentPlayerIdx + 1) % g.players.length;
+  } else {
+    g.currentPlayerIdx = (g.currentPlayerIdx + 1) % g.players.length;
+  }
+  g.currentDarts = [null, null, null];
+  g.multiplier = 1;
+  save(); render();
+}
+
+function finishGame(winnerId) {
+  const g = state.game;
+  g.finished = true;
+  const record = {
+    id: uid(),
+    date: g.startedAt,
+    mode: 'X01',
+    config: g.config,
+    players: g.players.map(p => ({
+      id: p.id, name: p.name, sets: p.sets, legs: p.legs,
+      finalScore: p.totalScored, turns: p.turns,
+    })),
+    winner: winnerId,
+  };
+  state.games.push(record);
+  state.game = null;
+  state.view = 'allgames';
+  save(); render();
+  setTimeout(()=>alert('Spiel beendet! Gewinner: ' + g.players.find(p=>p.id===winnerId).name), 50);
+}
+
+function undoDart() {
+  const g = state.game;
+  if (!g) return;
+  for (let i=2;i>=0;i--) {
+    if (g.currentDarts[i]) { g.currentDarts[i] = null; g.multiplier = 1; save(); render(); return; }
+  }
+}
+
+// ============================================================================
+//  HANDLERS
+// ============================================================================
+function attachHandlers() {
+  // Bottom nav
+  document.querySelectorAll('[data-nav]').forEach(b => {
+    b.onclick = () => { state.view = b.dataset.nav; render(); };
+  });
+
+  // Mode toggle
+  document.querySelectorAll('[data-mode]').forEach(b => {
+    b.onclick = () => { state.config.mode = b.dataset.mode; save(); render(); };
+  });
+
+  // Config buttons
+  document.querySelectorAll('[data-cfg]').forEach(b => {
+    b.onclick = () => cycleConfig(b.dataset.cfg);
+  });
+
+  // Random order
+  const ro = document.getElementById('randomOrder');
+  if (ro) ro.onchange = () => { state.config.randomOrder = ro.checked; save(); };
+
+  // Start button
+  const sb = document.getElementById('startBtn');
+  if (sb) sb.onclick = startGame;
+
+  // Add bot
+  const ab = document.getElementById('addBot');
+  if (ab) ab.onclick = addBot;
+
+  // Add player from home
+  const aph = document.getElementById('addPlayerHome');
+  if (aph) aph.onclick = () => promptAddPlayer(true);
+
+  // Players page add
+  const apb = document.getElementById('addPlayerBtn');
+  if (apb) apb.onclick = () => promptAddPlayer(false);
+
+  // Remove from selected (home)
+  document.querySelectorAll('[data-removeSel]').forEach(b => {
+    b.onclick = () => {
+      state.config.selectedPlayerIds = state.config.selectedPlayerIds.filter(id => id !== b.dataset.removesel);
+      save(); render();
+    };
+  });
+
+  // Remove player permanently
+  document.querySelectorAll('[data-removePlayer]').forEach(b => {
+    b.onclick = () => {
+      if (!confirm('Spieler löschen?')) return;
+      const id = b.dataset.removeplayer;
+      state.players = state.players.filter(p => p.id !== id);
+      state.config.selectedPlayerIds = state.config.selectedPlayerIds.filter(x=>x!==id);
+      if (state.activePlayerId === id) state.activePlayerId = null;
+      save(); render();
+    };
+  });
+
+  // Set active player
+  document.querySelectorAll('[data-setactive]').forEach(b => {
+    b.onclick = () => {
+      const id = b.dataset.setactive;
+      state.activePlayerId = state.activePlayerId === id ? null : id;
+      save(); render();
+    };
+  });
+
+  // Games filter
+  document.querySelectorAll('[data-filter]').forEach(b => {
+    b.onclick = () => { state.gamesFilter = b.dataset.filter; render(); };
+  });
+
+  // Clear games
+  const cg = document.getElementById('clearGames');
+  if (cg) cg.onclick = () => {
+    if (confirm('Alle Spiele löschen?')) { state.games = []; save(); render(); }
+  };
+
+  // Game keypad
+  document.querySelectorAll('[data-num]').forEach(b => {
+    b.onclick = () => pressNum(parseInt(b.dataset.num));
+  });
+  document.querySelectorAll('[data-mult]').forEach(b => {
+    b.onclick = () => {
+      const m = parseInt(b.dataset.mult);
+      state.game.multiplier = state.game.multiplier === m ? 1 : m;
+      save(); render();
+    };
+  });
+  const ud = document.getElementById('undoDart');
+  if (ud) ud.onclick = undoDart;
+
+  // Back from game
+  const bg = document.getElementById('backGame');
+  if (bg) bg.onclick = () => {
+    if (confirm('Spiel abbrechen? Fortschritt geht verloren.')) {
+      state.game = null; state.view = 'home'; save(); render();
+    }
+  };
+
+  // Settings
+  const ex = document.getElementById('exportData');
+  if (ex) ex.onclick = exportData;
+  const im = document.getElementById('importData');
+  if (im) im.onclick = importData;
+  const rs = document.getElementById('resetAll');
+  if (rs) rs.onclick = () => {
+    if (confirm('Wirklich ALLE Daten löschen?')) {
+      localStorage.removeItem(STORAGE_KEY);
+      state = load(); render();
+    }
+  };
+
+  // Click on selected players in home to nothing; on players page click name to add to selection
+  document.querySelectorAll('.player-row').forEach(row => {
+    const pid = row.dataset.pid;
+    if (!pid) return;
+    if (state.view === 'players') {
+      // Click the name area to toggle selection for next game
+      const name = row.querySelector('.name');
+      if (name) {
+        name.onclick = () => {
+          const sel = state.config.selectedPlayerIds;
+          if (sel.includes(pid)) state.config.selectedPlayerIds = sel.filter(x=>x!==pid);
+          else state.config.selectedPlayerIds = [...sel, pid];
+          save();
+          // visual feedback
+          name.style.color = sel.includes(pid) ? '' : '#4ade80';
+        };
+      }
+    }
+    setupDrag(row);
+  });
+}
+
+function cycleConfig(field) {
+  const c = state.config;
+  const cycles = {
+    punkte: [101,201,301,501,701],
+    checkout: ['Straight Out','Double Out','Master Out'],
+    checkin: ['Straight In','Double In','Master In'],
+    saetze: [1,2,3,5,7],
+    legs: [1,2,3,5,7],
+    matchType: ['First to','Best of'],
+  };
+  const arr = cycles[field];
+  const i = arr.indexOf(c[field]);
+  c[field] = arr[(i+1) % arr.length];
+  save(); render();
+}
+
+function promptAddPlayer(autoSelect) {
+  const name = prompt('Name des Spielers:');
+  if (!name || !name.trim()) return;
+  const p = { id: uid(), name: name.trim(), isBot: false };
+  state.players.push(p);
+  if (autoSelect) state.config.selectedPlayerIds.push(p.id);
+  save(); render();
+}
+
+function addBot() {
+  state.botCounter = (state.botCounter || 0) + 1;
+  const p = { id: uid(), name: 'DartBot ' + state.botCounter, isBot: true };
+  state.players.push(p);
+  state.config.selectedPlayerIds.push(p.id);
+  save(); render();
+}
+
+// Drag & drop reorder
+let dragSrcId = null;
+function setupDrag(row) {
+  row.addEventListener('dragstart', e => {
+    dragSrcId = row.dataset.pid;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  row.addEventListener('dragend', () => row.classList.remove('dragging'));
+  row.addEventListener('dragover', e => { e.preventDefault(); });
+  row.addEventListener('drop', e => {
+    e.preventDefault();
+    const tgtId = row.dataset.pid;
+    if (!dragSrcId || dragSrcId === tgtId) return;
+    const list = state.view === 'home' ? state.config.selectedPlayerIds : state.players.map(p=>p.id);
+    const from = list.indexOf(dragSrcId);
+    const to = list.indexOf(tgtId);
+    if (from<0||to<0) return;
+    const moved = list.splice(from,1)[0];
+    list.splice(to,0,moved);
+    if (state.view === 'home') state.config.selectedPlayerIds = list;
+    else state.players = list.map(id => state.players.find(p=>p.id===id));
+    save(); render();
+  });
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({players:state.players,games:state.games,config:state.config},null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dartrechner_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (data.players) state.players = data.players;
+        if (data.games) state.games = data.games;
+        if (data.config) state.config = { ...state.config, ...data.config };
+        save(); render();
+        alert('Import erfolgreich');
+      } catch (e) { alert('Fehler beim Import: '+e.message); }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Initial render
+render();
+
+// PWA: register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

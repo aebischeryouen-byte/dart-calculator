@@ -1,0 +1,19 @@
+{
+  "name": "Dart Rechner",
+  "short_name": "Darts",
+  "description": "Dart Rechner mit X01, lokal gespeichert",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
