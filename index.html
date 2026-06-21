@@ -530,9 +530,13 @@ function renderGame() {
           <div style="display:flex;flex-direction:column;gap:6px;">
             <div style="color:#888;font-size:15px;">${escapeHtml(p.name)}</div>
             <div class="darts">
-              ${[0,1,2].map(i => `
-                <div class="dart-box">${idx===g.currentPlayerIdx && g.currentDarts[i] ? g.currentDarts[i].label : ''}</div>
-              `).join('')}
+              ${[0,1,2].map(i => {
+                if (idx===g.currentPlayerIdx) {
+                  return `<div class="dart-box">${g.currentDarts[i] ? g.currentDarts[i].label : ''}</div>`;
+                }
+                const last = p.lastDarts && p.lastDarts[i] ? p.lastDarts[i] : '';
+                return `<div class="dart-box" style="color:#666">${last}</div>`;
+              }).join('')}
             </div>
             <div class="turn-total">${idx===g.currentPlayerIdx ? sumDarts(g.currentDarts) : (p.lastTurn||0)}</div>
           </div>
@@ -735,6 +739,7 @@ function finishTurn(won, bust) {
   const dartsThrown = g.currentDarts.filter(Boolean).length;
 
   cur.dartCount += dartsThrown;
+  cur.lastDarts = g.currentDarts.map(d => d ? d.label : '');
   if (!bust) {
     cur.score -= turnSum;
     cur.totalScored += turnSum;
@@ -798,20 +803,18 @@ function undoDart() {
     if (g.currentDarts[i]) { g.currentDarts[i] = null; g.multiplier = 1; save(); render(); return; }
   }
   // 2. No current darts → restore previous turn from history
+  //    Restore the snapshot (with all darts intact) AND remove only the last dart
+  //    so the user can correct just that one throw.
   if (g.history && g.history.length > 0) {
     const snap = JSON.parse(g.history.pop());
     g.players = snap.players;
     g.currentPlayerIdx = snap.currentPlayerIdx;
-    g.currentDarts = snap.currentDarts;
-    g.multiplier = snap.multiplier || 1;
-    // Remove the most recent recorded turn for that player
-    const prevPlayer = g.players[g.currentPlayerIdx];
-    if (prevPlayer && prevPlayer.turns && prevPlayer.turns.length > 0) {
-      // Already restored via snapshot; nothing extra needed
-    }
-    // Clear the active dart row so the user sees the player ready to throw again
-    g.currentDarts = [null, null, null];
+    g.currentDarts = snap.currentDarts || [null,null,null];
     g.multiplier = 1;
+    // Remove only the last thrown dart
+    for (let i=2;i>=0;i--) {
+      if (g.currentDarts[i]) { g.currentDarts[i] = null; break; }
+    }
     save(); render();
   }
 }
