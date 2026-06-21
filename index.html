@@ -134,7 +134,8 @@
   .player-panel .darts { display: flex; gap: 6px; }
   .player-panel .dart-box { width: 44px; height: 44px; background: #000;
     border-radius: 4px; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 700; }
+    font-size: 16px; font-weight: 700; transition: background 0.2s; }
+  .player-panel .dart-box.bust { background: #dc2626; color: #fff !important; }
   .player-panel .stats { text-align: right; font-size: 13px; color: #888; }
   .player-panel .stats b { color: #fff; }
   .player-panel .turn-total { font-size: 18px; font-weight: 700; color: #fff;
@@ -532,10 +533,12 @@ function renderGame() {
             <div class="darts">
               ${[0,1,2].map(i => {
                 if (idx===g.currentPlayerIdx) {
-                  return `<div class="dart-box">${g.currentDarts[i] ? g.currentDarts[i].label : ''}</div>`;
+                  const bustCls = (g.bustFlash && g.currentDarts[i]) ? ' bust' : '';
+                  return `<div class="dart-box${bustCls}">${g.currentDarts[i] ? g.currentDarts[i].label : ''}</div>`;
                 }
                 const last = p.lastDarts && p.lastDarts[i] ? p.lastDarts[i] : '';
-                return `<div class="dart-box" style="color:#666">${last}</div>`;
+                const bustCls = (p.lastDartsBust && last) ? ' bust' : '';
+                return `<div class="dart-box${bustCls}" style="color:#666">${last}</div>`;
               }).join('')}
             </div>
             <div class="turn-total">${idx===g.currentPlayerIdx ? sumDarts(g.currentDarts) : (p.lastTurn||0)}</div>
@@ -704,18 +707,20 @@ function pressNum(n) {
   // Check for instant win on this dart
   if (newScore === 0) {
     if (g.config.checkout === 'Straight Out' || lastIsDouble) {
-      // win
       finishTurn(true, false);
       return;
     } else {
-      // bust (double out required but not double)
-      finishTurn(false, true);
+      g.bustFlash = true;
+      save(); render();
+      setTimeout(() => { g.bustFlash = false; finishTurn(false, true); }, 1300);
       return;
     }
   }
   // Bust conditions
   if (newScore < 0 || (g.config.checkout === 'Double Out' && newScore === 1)) {
-    finishTurn(false, true);
+    g.bustFlash = true;
+    save(); render();
+    setTimeout(() => { g.bustFlash = false; finishTurn(false, true); }, 1300);
     return;
   }
   if (dartsThrown === 3) {
@@ -740,6 +745,7 @@ function finishTurn(won, bust) {
 
   cur.dartCount += dartsThrown;
   cur.lastDarts = g.currentDarts.map(d => d ? d.label : '');
+  cur.lastDartsBust = !!bust;
   if (!bust) {
     cur.score -= turnSum;
     cur.totalScored += turnSum;
