@@ -566,7 +566,7 @@ function renderKeypad() {
   const suggestion = checkoutSuggestion(remaining, dartsLeft, g.config.checkout);
   const coBar = suggestion.length
     ? `<div class="checkout-bar">${suggestion.map(s=>`<div class="co-dart">${s}</div>`).join('')}</div>`
-    : `<div class="checkout-bar"><div class="co-empty">${remaining>170?'':'kein Finish möglich'}</div></div>`;
+    : `<div class="checkout-bar"><div class="co-empty">${remaining>170?'':'kein Finish'}</div></div>`;
   return `
     ${coBar}
     <div class="keypad">
@@ -628,15 +628,72 @@ const CHECKOUTS_DO = {
   12:['D6'],10:['D5'],8:['D4'],6:['D3'],4:['D2'],2:['D1'],
 };
 
-function checkoutSuggestion(score, dartsLeft, mode) {
-  if (mode === 'Double Out' || mode === 'Master Out' || mode === 'Straight Out') {
-    if (score <= 1 || score > 170) return [];
-    const co = CHECKOUTS_DO[score];
-    if (!co) return [];
-    if (co.length > dartsLeft) return [];
-    return co;
+function dartOptions() {
+  const opts = [];
+  for (let i = 1; i <= 20; i++) opts.push({label: String(i), value: i});
+  opts.push({label: '25', value: 25});
+  for (let i = 1; i <= 20; i++) opts.push({label: 'D'+i, value: i*2});
+  opts.push({label: 'Bull', value: 50});
+  for (let i = 1; i <= 20; i++) opts.push({label: 'T'+i, value: i*3});
+  return opts;
+}
+
+function isDoubleLabel(lbl) {
+  return lbl === 'Bull' || (lbl.startsWith('D') && lbl !== '25');
+}
+
+function findCheckout(score, dartsLeft, requireDoubleEnd) {
+  if (score <= 0 || dartsLeft < 1) return null;
+  const opts = dartOptions();
+  // 1 dart
+  for (const o of opts) {
+    if (o.value === score && (!requireDoubleEnd || isDoubleLabel(o.label))) return [o.label];
   }
-  return [];
+  if (dartsLeft < 2) return null;
+  // 2 darts (high first)
+  const desc = [...opts].sort((a,b) => b.value - a.value);
+  for (const a of desc) {
+    if (a.value >= score) continue;
+    const need = score - a.value;
+    for (const b of opts) {
+      if (b.value === need && (!requireDoubleEnd || isDoubleLabel(b.label))) {
+        return [a.label, b.label];
+      }
+    }
+  }
+  if (dartsLeft < 3) return null;
+  // 3 darts
+  for (const a of desc) {
+    if (a.value >= score) continue;
+    const r1 = score - a.value;
+    for (const b of desc) {
+      if (b.value >= r1) continue;
+      const need = r1 - b.value;
+      for (const c of opts) {
+        if (c.value === need && (!requireDoubleEnd || isDoubleLabel(c.label))) {
+          return [a.label, b.label, c.label];
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function checkoutSuggestion(score, dartsLeft, mode) {
+  if (score <= 0 || score > 180 || dartsLeft < 1) return [];
+  // Prefer the well-known checkout chart for Double Out
+  if (mode === 'Double Out' || mode === 'Master Out') {
+    if (score === 1) return [];
+    const chart = CHECKOUTS_DO[score];
+    if (chart && chart.length <= dartsLeft) return chart;
+    const found = findCheckout(score, dartsLeft, true);
+    return found || [];
+  }
+  // Straight Out: any combination
+  const chart = CHECKOUTS_DO[score];
+  if (chart && chart.length <= dartsLeft) return chart;
+  const found = findCheckout(score, dartsLeft, false);
+  return found || [];
 }
 
 // ============================================================================
