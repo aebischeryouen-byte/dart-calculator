@@ -86,15 +86,23 @@
   .checkout-bar .co-empty { color: #555; padding: 10px 0; font-size: 14px; }
 
   /* Players list */
-  .player-row { display: flex; align-items: center; padding: 14px 8px;
-    border-bottom: 1px solid #1a1a1a; gap: 12px; }
-  .player-row .dart-icon { width: 26px; height: 26px; flex-shrink: 0; }
-  .player-row .name { flex: 1; font-size: 17px; font-weight: 600; }
+  .player-row { display: flex; align-items: center; padding: 12px 8px;
+    border-bottom: 1px solid #1a1a1a; gap: 8px; }
+  .player-row .dart-icon { width: 28px; height: 28px; flex-shrink: 0; display:inline-block; }
+  .player-row .dart-icon svg { width: 100%; height: 100%; }
+  .player-row .name { flex: 1; font-size: 17px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .player-row .name.active { color: #4ade80; }
   .player-row .name.bot { color: #4ade80; }
-  .player-row .trash { background: none; border: none; color: #777;
-    cursor: pointer; padding: 8px; font-size: 20px; }
-  .player-row .drag { color: #777; padding: 8px; font-size: 22px; cursor: grab; }
+  .player-row .icon-action { background: #333; border: none; color: #fff;
+    cursor: pointer; padding: 8px; border-radius: 6px; flex-shrink: 0;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .player-row .icon-action svg { width: 20px; height: 20px; }
+  .player-row .icon-action.edit { background: #16a34a; }
+  .player-row .icon-action.del { background: #dc2626; }
+  .player-row .drag { color: #777; padding: 6px; cursor: grab; flex-shrink: 0;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .player-row .drag svg { width: 22px; height: 22px; }
   .player-row.dragging { opacity: 0.4; }
 
   /* Game history */
@@ -338,7 +346,7 @@ function renderHome() {
             <div class="player-row" data-pid="${p.id}" draggable="true">
               <span class="dart-icon" style="color:${i===0?'#4ade80':'#888'}">${ICONS.dart}</span>
               <span class="name ${p.isBot?'bot':''}">${escapeHtml(p.name)}</span>
-              <button class="trash" data-removeSel="${p.id}">${ICONS.trash}</button>
+              <button class="icon-action del" data-removeSel="${p.id}" title="Aus Spiel entfernen">${ICONS.trash}</button>
               <span class="drag">${ICONS.drag}</span>
             </div>
           `).join('')}
@@ -364,8 +372,8 @@ function renderPlayers() {
           <div class="player-row" data-pid="${p.id}" draggable="true">
             <span class="dart-icon" style="color:${state.config.selectedPlayerIds.includes(p.id)?'#4ade80':'#888'}">${ICONS.dart}</span>
             <span class="name ${state.config.selectedPlayerIds.includes(p.id)?'active':''} ${p.isBot?'bot':''}">${escapeHtml(p.name)}</span>
-            <button class="trash" data-renamePlayer="${p.id}" style="color:#4ade80">${ICONS.pencil}</button>
-            <button class="trash" data-removePlayer="${p.id}">${ICONS.trash}</button>
+            <button class="icon-action edit" data-renamePlayer="${p.id}" title="Umbenennen">${ICONS.pencil}</button>
+            <button class="icon-action del" data-removePlayer="${p.id}" title="Löschen">${ICONS.trash}</button>
             <span class="drag">${ICONS.drag}</span>
           </div>
         `).join('')}
@@ -714,6 +722,14 @@ function pressNum(n) {
 
 function finishTurn(won, bust) {
   const g = state.game;
+  // Save snapshot for undo across turns
+  if (!g.history) g.history = [];
+  g.history.push(JSON.stringify({
+    players: g.players, currentPlayerIdx: g.currentPlayerIdx,
+    currentDarts: g.currentDarts, multiplier: g.multiplier,
+  }));
+  if (g.history.length > 50) g.history.shift();
+
   const cur = g.players[g.currentPlayerIdx];
   const turnSum = bust ? 0 : sumDarts(g.currentDarts);
   const dartsThrown = g.currentDarts.filter(Boolean).length;
@@ -777,8 +793,26 @@ function finishGame(winnerId) {
 function undoDart() {
   const g = state.game;
   if (!g) return;
+  // 1. Undo within current turn if any dart thrown
   for (let i=2;i>=0;i--) {
     if (g.currentDarts[i]) { g.currentDarts[i] = null; g.multiplier = 1; save(); render(); return; }
+  }
+  // 2. No current darts → restore previous turn from history
+  if (g.history && g.history.length > 0) {
+    const snap = JSON.parse(g.history.pop());
+    g.players = snap.players;
+    g.currentPlayerIdx = snap.currentPlayerIdx;
+    g.currentDarts = snap.currentDarts;
+    g.multiplier = snap.multiplier || 1;
+    // Remove the most recent recorded turn for that player
+    const prevPlayer = g.players[g.currentPlayerIdx];
+    if (prevPlayer && prevPlayer.turns && prevPlayer.turns.length > 0) {
+      // Already restored via snapshot; nothing extra needed
+    }
+    // Clear the active dart row so the user sees the player ready to throw again
+    g.currentDarts = [null, null, null];
+    g.multiplier = 1;
+    save(); render();
   }
 }
 
@@ -1034,9 +1068,29 @@ function escapeHtml(s) {
 // Initial render
 render();
 
-// PWA: register service worker
+// PWA: register service worker + auto-update
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Check for updates every time app opens
+    reg.update();
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          // New version available - reload to apply
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(()=>{});
+  // Reload when new SW takes control
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 }
 </script>
 </body>
